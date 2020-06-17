@@ -1,12 +1,15 @@
 from unittest import TestCase
 import unittest.main
 import sys
+import os
 import logging
 from time import sleep
 
-from espisy.esp import ESP
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from espisy.core import ESP
 from espisy.errors import ESPNotFoundError, NoGPIOError
-from espisy.tests.constants import test_ip, test_name, test_gpio, test_state
+from tests.constants import test_ip, test_name, test_gpio, test_state
 
 logger = logging.getLogger(__name__)
 fh = logging.FileHandler("test_details.log", "w")

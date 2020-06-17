@@ -3,8 +3,8 @@ ESP Module
 ############
 
 
-.. automodule:: espisy.esp
+.. automodule:: espisy.core
    
-.. autoclass:: espisy.esp.ESP   
+.. autoclass:: espisy.core.ESP   
    :members:
 

@@ -13,7 +13,7 @@ class Sensor():
     """Class that virtualizes any sensor.
 
     The class copies the **current state** of the sensor.
-    Recommended usage is to do a single refresh of the ESP and refer to all sensors you need via :meth:`espisy.esp.ESP.sensor` method.
+    Recommended usage is to do a single refresh of the ESP and refer to all sensors you need via :meth:`core.ESP.sensor` method.
     """
 
     def __init__(self, name, state):

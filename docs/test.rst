@@ -2,5 +2,5 @@
 Testing Module
 ################
 
-.. automodule:: espisy.tests.test_esp
+.. automodule:: tests.test_esp
     :members:

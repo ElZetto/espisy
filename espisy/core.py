@@ -6,9 +6,9 @@ import logging
 
 import requests
 
-from espisy.sensor import Sensor
-from espisy.errors import ESPNotFoundError, NoGPIOError
-from espisy.tests.constants import test_ip, test_name, test_state, test_gpio
+from .sensor import Sensor
+from .errors import ESPNotFoundError, NoGPIOError
+from .constants import test_ip, test_name, test_state, test_gpio
 
 
 logger = logging.getLogger(__name__)
