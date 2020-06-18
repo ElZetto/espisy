@@ -3,13 +3,17 @@
 import os
 import json
 import logging
+import ipaddress
+import threading
 
 import requests
+import yaml
 
 from .sensor import Sensor
 from .errors import ESPNotFoundError, NoGPIOError
 from .constants import test_ip, test_name, test_state, test_gpio
 
+file_directory  = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
 logger = logging.getLogger(__name__)
 sh = logging.StreamHandler()
@@ -24,6 +28,7 @@ class ESP():
     """ESP class that can be used to access the state and control ESP devices within your network"""
 
     _device_register = {}
+    _name_ip_map = {}
 
     def __init__(self, ip: str, dummy=False):
         """Initializing the ESP
@@ -40,12 +45,12 @@ class ESP():
             self.__set_up_dummy()
         else:
             self.ip = ip
-            self.name = test_name
             self._is_dummy = False
             self._state = None
             self._switches = {}
             self.refresh()
             self._initialize_switches()
+            self.name = self._state["System"]["Unit Name"]
 
     def __set_up_dummy(self):
         """Sets all properties to dummy values. Used with testing"""
@@ -323,6 +328,8 @@ class ESP():
             Raised when no ESP was found
         """
 
+        if ip in cls._name_ip_map:  # if the name of the ESPEasy device is passed instead of the ip,
+            ip = cls._name_ip_map[ip]  # get the ip address from the map
         esp_found = cls._device_register.get(ip, None)
         if esp_found == None:
             raise ESPNotFoundError
@@ -349,7 +356,7 @@ class ESP():
     @classmethod
     def add(cls, ip, dummy=False):
         """Classmethod. Should always be used.
-        
+
         Especially necessary if the function of the device register is used.
 
         Parameters
@@ -359,5 +366,74 @@ class ESP():
         dummy : bool, optional
             If set to True, a dummy ESP will be set up. Used for testing, by default False
         """
-
+        name = requests.get(
+            f"http://{ip}/json").json()["System"]["Unit Name"]
+        cls._name_ip_map.update({name:ip})
         cls._device_register.update({ip: ESP(ip, dummy)})
+
+    @classmethod
+    def scan_network(cls, network: ipaddress.IPv4Network = None, timeout=1):
+        """Scans the network for any ESPEasy device and creates ESP instances
+
+        The method scans all hosts in the given ipaddress.IPv4Network.
+        You can pass the network as argument or define it in the esp.yaml configuration file. E.g. ipv4network: 192.168.0.0/24
+        Be sure to use the right network. The method does not perform any checks on the network!
+
+        Parameters
+        ----------
+        network : ipaddress.IPv4Network, optional
+            Pass the network or leave it as None and configure it in esp.yaml, by default None
+        timeout : int, optional
+            the time for the request to wait for an answer, by default 1
+
+        .. todo::
+
+            fix error on windows(?) "address is invalid in this context" 
+            
+        """
+
+        # if no network is passed, try to find the network in the configuration file.
+        # log and return if not possible.
+        if network == None:
+            try:
+                with open(os.path.join(file_directory, "esp.yaml"),"r") as f:
+                    ipv4network_string = yaml.safe_load(f)["ipv4network"]
+                network = ipaddress.ip_network(ipv4network_string)
+            except FileNotFoundError as fnferror:
+                logger.error("File esp.yaml does not exist")
+                return
+            except KeyError as kerror:
+                logger.error("ipv4network not defined")
+                return
+
+        # start a single thread for each ip address in the network and validate the answer on <ip>:80/json
+        threads = []
+        for host in network:
+            t = threading.Thread(
+                target=cls.__connect_validate_ipv4_address, args=(host, timeout))
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+            # try:
+            #     response = requests.get(
+            #         f"http://{host}/json", timeout=timeout).json()
+            # except (json.JSONDecodeError, requests.ConnectTimeout) as error:
+            # logger.error(f"no ESPEasy device at {host}")
+
+    @classmethod
+    def __connect_validate_ipv4_address(cls, host: ipaddress.IPv4Address, timeout: int):
+        try:
+            response = requests.get(
+                f"http://{host}/json", timeout=timeout).json()
+            name = response["System"]["Unit Name"]
+            if name:
+                print(f"found {name} at {host}")
+                if name in cls._name_ip_map:
+                    logger.info(
+                        f"Name already exists. Please rename the ESPEasy device {name} at {host.exploded} and scan again.")
+                else:
+                    ESP.add(host.exploded)
+                    # cls._name_ip_map.update({name: host.exploded})
+        except (json.JSONDecodeError, requests.ConnectTimeout, KeyError, requests.ConnectionError) as error:
+            pass# logger.debug(f"did not find a device at {host}")
