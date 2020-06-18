@@ -23,8 +23,3 @@ For developers:
    howto
    todo
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`

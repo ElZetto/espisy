@@ -19,10 +19,10 @@ Create an ESP device
 =====================
 
 .. warning::
-    **You should always use the classmethod** :meth:`core.ESP.add` **to add a new ESP device**
+    **You should always use the classmethod** :meth:`espisy.core.ESP.add` **to add a new ESP device**
 
 The ESP has a static register which keeps track of the ESP instances. It is possible to refer to every created ESP with
-the :meth:`core.ESP.get` method. This was implemented, because it simplifies the dynamic instantiation of ESP devices. A thing I needed pretty soon during development.
+the :meth:`espisy.core.ESP.get` method. This was implemented, because it simplifies the dynamic instantiation of ESP devices. A thing I needed pretty soon during development.
 
 If you want to access a specific ESP device faster, you can of course use it with your own variable as usual.
 
@@ -46,7 +46,7 @@ You can manipulate the ESP GPIOS directly via HTTP request.
 
     http://<ip>/control?cmd=GPIO,<gpio>,<state>
 
-espisy wraps this with the functions :meth:`core.ESP.gpio_on` and :meth:`core.ESP.gpio_off`.
+espisy wraps this with the functions :meth:`espisy.core.ESP.gpio_on` and :meth:`espisy.core.ESP.gpio_off`.
 
 .. code-block:: python
 
@@ -70,8 +70,8 @@ In order to use the switches, you have to map the right GPIO once
 
     ESP.get("192.0.0.255").map_gpio_to_switch("LED",2)
 
-Now you can use the commands :meth:`core.ESP.switch_state`, :meth:`core.ESP.on()`, 
-:meth:`core.ESP.off()` and :meth:`core.ESP.toggle()`
+Now you can use the commands :meth:`espisy.core.ESP.switch_state`, :meth:`espisy.core.ESP.on()`, 
+:meth:`espisy.core.ESP.off()` and :meth:`espisy.core.ESP.toggle()`
 
 .. code-block:: python
 
@@ -128,6 +128,9 @@ Alternatively, you can also access the sensor as a :doc:`subclass <sensor>`, whi
 
 Testing
 ========
+.. warning::
+    The test toggles GPIO 2 high and low a few times. Only wire the GPIO up to LED or something if you know what you are doing.
+
 The testing module that comes with espisy can be executed with a dummy (which is only useful for development) or with a real ESP. If you want to test automatically with a real ESP, please set up an ESPEasy device like this:
 
 +----------------------------+--------+------+
@@ -145,6 +148,9 @@ Start the test either with `--dummmy` or with `--ip xxx.xxx.xxx`
 
 .. code-block:: python
 
-    python -m espisy.tests.test_esp.py --dummy
+    python test_esp --dummy
     # or with an example ip:
-    python -m espisy.tests.test_esp.py --ip 192.0.0.255
+    python test_esp --ip 192.0.0.255
+
+
+It will try to create and delete the ESP, switches and toggle
