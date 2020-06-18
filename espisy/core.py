@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import ipaddress
 
 import requests
 
@@ -349,7 +350,7 @@ class ESP():
     @classmethod
     def add(cls, ip, dummy=False):
         """Classmethod. Should always be used.
-        
+
         Especially necessary if the function of the device register is used.
 
         Parameters
@@ -361,3 +362,17 @@ class ESP():
         """
 
         cls._device_register.update({ip: ESP(ip, dummy)})
+
+    @classmethod
+    def scan_network(cls, network: ipaddress.IPv4Network=None, timeout=1):
+        if network == None:
+            network = ipaddress.ip_network("192.168.178.0/23")
+        
+        for host in network:
+            try:
+                response = requests.get(
+                    f"http://{host}/json", timeout=timeout).json()
+                if response["System"]["Unit Name"]:
+                    print(f"found {response['System']['Unit Name']} at {host}")
+            except (json.JSONDecodeError, KeyError, requests.ConnectTimeout, KeyboardInterrupt) as error:
+                logger.error(f"no ESPEasy device at {host}")
