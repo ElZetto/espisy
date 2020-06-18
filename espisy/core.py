@@ -1,9 +1,10 @@
-"""ESP Module to virtualize ESPEasy devices
-"""
+"""ESP Module to virtualize ESPEasy devices"""
+
 import os
 import json
 import logging
 import ipaddress
+
 import threading
 
 import requests
