@@ -14,7 +14,7 @@ from .sensor import Sensor
 from .errors import ESPNotFoundError, NoGPIOError
 from .constants import test_ip, test_name, test_state, test_gpio
 
-file_directory  = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+file_directory = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
 logger = logging.getLogger(__name__)
 sh = logging.StreamHandler()
@@ -369,7 +369,7 @@ class ESP():
         """
         name = requests.get(
             f"http://{ip}/json").json()["System"]["Unit Name"]
-        cls._name_ip_map.update({name:ip})
+        cls._name_ip_map.update({name: ip})
         cls._device_register.update({ip: ESP(ip, dummy)})
 
     @classmethod
@@ -389,15 +389,15 @@ class ESP():
 
         .. todo::
 
-            fix error on windows(?) "address is invalid in this context" 
-            
+            fix error on windows(?) "address is invalid in this context when trying to connect to x.x.x.255" 
+
         """
 
         # if no network is passed, try to find the network in the configuration file.
         # log and return if not possible.
         if network == None:
             try:
-                with open(os.path.join(file_directory, "esp.yaml"),"r") as f:
+                with open(os.path.join(file_directory, "esp.yaml"), "r") as f:
                     ipv4network_string = yaml.safe_load(f)["ipv4network"]
                 network = ipaddress.ip_network(ipv4network_string)
             except FileNotFoundError as fnferror:
@@ -416,14 +416,10 @@ class ESP():
             threads.append(t)
         for t in threads:
             t.join()
-            # try:
-            #     response = requests.get(
-            #         f"http://{host}/json", timeout=timeout).json()
-            # except (json.JSONDecodeError, requests.ConnectTimeout) as error:
-            # logger.error(f"no ESPEasy device at {host}")
 
     @classmethod
     def __connect_validate_ipv4_address(cls, host: ipaddress.IPv4Address, timeout: int):
+        """Internal function to knock at port 80 and check if the answer is ESPEasy-like"""
         try:
             response = requests.get(
                 f"http://{host}/json", timeout=timeout).json()
@@ -437,4 +433,4 @@ class ESP():
                     ESP.add(host.exploded)
                     # cls._name_ip_map.update({name: host.exploded})
         except (json.JSONDecodeError, requests.ConnectTimeout, KeyError, requests.ConnectionError) as error:
-            pass# logger.debug(f"did not find a device at {host}")
+            pass  # logger.debug(f"did not find a device at {host}")

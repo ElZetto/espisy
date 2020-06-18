@@ -21,5 +21,5 @@ For developers:
    :maxdepth: 1
    
    howto
-
+   todo
 

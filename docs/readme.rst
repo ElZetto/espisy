@@ -32,6 +32,27 @@ If you want to access a specific ESP device faster, you can of course use it wit
     my_esp = ESP.get("192.0.0.255")
     # do stuff with my_esp
 
+    # you can also access the ESP with the name you gave it in the ESPEasy frontend
+    my_esp = ESP.get("garden")
+
+
+Scan the network
+=================
+
+You can scan your network for ESPEasy devices.
+configure the network (ipv4 with suffix) in the esp.yaml file or pass it as argument to :meth:`espisy.core.ESP.scan_network`
+
+.. code-block:: python
+
+    ESP.scan_network("192.168.0.0/24")
+
+    # or with config file:
+    # esp.yaml:
+    #   ipv4network: 192.168.0.0/24
+    ESP.scan_network()
+
+    ESP.get("living room")
+
 .. _gpio:
 
 GPIO
