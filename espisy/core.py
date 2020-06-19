@@ -4,7 +4,6 @@ import os
 import json
 import logging
 import ipaddress
-
 import threading
 
 import requests
@@ -386,11 +385,6 @@ class ESP():
             Pass the network or leave it as None and configure it in esp.yaml, by default None
         timeout : int, optional
             the time for the request to wait for an answer, by default 1
-
-        .. todo::
-
-            fix error on windows(?) "address is invalid in this context when trying to connect to x.x.x.255" 
-
         """
 
         # if no network is passed, try to find the network in the configuration file.
@@ -428,9 +422,8 @@ class ESP():
                 print(f"found {name} at {host}")
                 if name in cls._name_ip_map:
                     logger.info(
-                        f"Name already exists. Please rename the ESPEasy device {name} at {host.exploded} and scan again.")
+                        f"{name} already exists. Please rename the ESPEasy device at {host.exploded} and scan again.")
                 else:
                     ESP.add(host.exploded)
-                    # cls._name_ip_map.update({name: host.exploded})
         except (json.JSONDecodeError, requests.ConnectTimeout, KeyError, requests.ConnectionError) as error:
             pass  # logger.debug(f"did not find a device at {host}")

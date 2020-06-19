@@ -18,11 +18,11 @@ Usage
 Create an ESP device
 =====================
 
-.. warning::
-    **You should always use the classmethod** :meth:`espisy.core.ESP.add` **to add a new ESP device**
+.. note::
+    **You should always use the classmethod** :meth:`~~espisy.core.ESP.add` **to add a new ESP device**
 
 The ESP has a static register which keeps track of the ESP instances. It is possible to refer to every created ESP with
-the :meth:`espisy.core.ESP.get` method. This was implemented, because it simplifies the dynamic instantiation of ESP devices. A thing I needed pretty soon during development.
+the :meth:`~espisy.core.ESP.get` method. This was implemented, because it simplifies the dynamic instantiation of ESP devices. A thing I needed pretty soon during development.
 
 If you want to access a specific ESP device faster, you can of course use it with your own variable as usual.
 
@@ -40,7 +40,7 @@ Scan the network
 =================
 
 You can scan your network for ESPEasy devices.
-configure the network (ipv4 with suffix) in the esp.yaml file or pass it as argument to :meth:`espisy.core.ESP.scan_network`
+configure the network (ipv4 with suffix) in the esp.yaml file or pass it as argument to :meth:`~espisy.core.ESP.scan_network`
 
 .. code-block:: python
 
@@ -67,7 +67,7 @@ You can manipulate the ESP GPIOS directly via HTTP request.
 
     http://<ip>/control?cmd=GPIO,<gpio>,<state>
 
-espisy wraps this with the functions :meth:`espisy.core.ESP.gpio_on` and :meth:`espisy.core.ESP.gpio_off`.
+espisy wraps this with the functions :meth:`~espisy.core.ESP.gpio_on` and :meth:`~espisy.core.ESP.gpio_off`.
 
 .. code-block:: python
 
@@ -91,8 +91,8 @@ In order to use the switches, you have to map the right GPIO once
 
     ESP.get("192.0.0.255").map_gpio_to_switch("LED",2)
 
-Now you can use the commands :meth:`espisy.core.ESP.switch_state`, :meth:`espisy.core.ESP.on()`, 
-:meth:`espisy.core.ESP.off()` and :meth:`espisy.core.ESP.toggle()`
+Now you can use the commands :meth:`~espisy.core.ESP.switch_state`, :meth:`~espisy.core.ESP.on()`, 
+:meth:`~espisy.core.ESP.off()` and :meth:`~espisy.core.ESP.toggle()`
 
 .. code-block:: python
 
@@ -136,7 +136,7 @@ Say you have a Sensor *"Environment - DHT11/12/22 SONOFF2301/7021"* named *"Livi
     ]
 
 Alternatively, you can also access the sensor as a :doc:`subclass <sensor>`, which provides the properties
-:attr:`~espisy.sensor.Sensor.temperature`, :attr:`~espisy.sensor.Sensor.humidity` and the method :meth:`~espisy.sensor.Sensor.feature`.
+:attr:`~espisy.sensor.Sensor.temperature`, :attr:`~espisy.sensor.Sensor.humidity` and the method :meth:`~~espisy.sensor.Sensor.feature`.
 
 .. code-block:: python
 

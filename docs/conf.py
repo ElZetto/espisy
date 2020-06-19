@@ -57,3 +57,5 @@ html_static_path = ['_static']
 todo_include_todos = True
 todo_link_only = True
 master_doc = 'index'
+
+autodoc_mock_imports = ["yaml"]
