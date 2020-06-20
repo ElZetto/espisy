@@ -56,6 +56,9 @@ class TestBasicESPFunctions(TestCase):
         else:
             logger.info(f"....ok:\n{answer}")
 
+    def test_network_scan(self):
+        pass
+
 
 class TestESPSwitches(TestCase):
 

@@ -1,3 +1,31 @@
+import configparser
+import logging
+import os
+import sys
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+sh = logging.StreamHandler()
+formatter = logging.Formatter(
+    "%(asctime)s %(name)s.%(funcName)s, line %(lineno)s \t %(levelname)s: %(message)s")
+sh.setFormatter(formatter)
+logger.addHandler(sh)
+logger.setLevel(logging.WARNING)
+
+filepath = os.path.dirname(__file__)
+
+# read configuration
+config = configparser.ConfigParser()
+config_file_name = os.path.join(filepath, 'esp.ini')
+logger.debug(f"Trying to read ini file from {config_file_name}")
+_config_correct = config.read(config_file_name)
+if _config_correct:
+    logger.debug(f"read sections:\n {config.sections()}")
+else:
+    sys.exit(f"""\033[91mFATAL: Could not read config file. Please check if {config_file_name} exists and is readable.
+Search for inifile at https://espisy.readthedocs.io for more information\033[0m""")
+
+# Dummy values:
 test_ip = "127.0.0.1"
 test_name = "test_name"
 test_gpio = 2
