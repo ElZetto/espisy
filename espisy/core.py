@@ -386,6 +386,18 @@ class ESP():
             yaml.dump(settings, save_file)
 
     def event(self, event: str) -> str:
+        """Triggers a event that can be fetched by a rule defined in ESPEasy
+
+        Parameters
+        ----------
+        event : str
+            Name of the event to trigger
+
+        Returns
+        -------
+        str
+            HTML response
+        """
         cmd_url = f"http://{self.ip}/control?cmd=event,{event}"
         answer = requests.get(cmd_url)
         return answer
