@@ -27,7 +27,7 @@ logger.setLevel(logging.DEBUG)
 # Extract the filename for settings from the config. Set to Home directory on default
 settings_dir = config.get("USER_SETTINGS", "file_dir")
 if settings_dir == "default":
-    settings_dir = Path.home()
+    settings_dir = os.path.join(Path.home(),".espisy")
 settings_file_name = os.path.join(settings_dir, "esp.yaml")
 
 
@@ -386,6 +386,18 @@ class ESP():
             yaml.dump(settings, save_file)
 
     def event(self, event: str) -> str:
+        """Triggers a event that can be fetched by a rule defined in ESPEasy
+
+        Parameters
+        ----------
+        event : str
+            Name of the event to trigger
+
+        Returns
+        -------
+        str
+            HTML response
+        """
         cmd_url = f"http://{self.ip}/control?cmd=event,{event}"
         answer = requests.get(cmd_url)
         return answer
