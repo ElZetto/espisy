@@ -27,7 +27,7 @@ logger.setLevel(logging.DEBUG)
 # Extract the filename for settings from the config. Set to Home directory on default
 settings_dir = config.get("USER_SETTINGS", "file_dir")
 if settings_dir == "default":
-    settings_dir = Path.home()
+    settings_dir = os.path.join(Path.home(),".espisy")
 settings_file_name = os.path.join(settings_dir, "esp.yaml")
 
 
