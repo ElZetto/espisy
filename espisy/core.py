@@ -461,13 +461,18 @@ class ESP():
         dummy : bool, optional
             If set to True, a dummy ESP will be set up. Used for testing, by default False
         """
+
+        lock = threading.Lock()
+        lock.acquire()
         name = requests.get(
             f"http://{ip}/json").json()["System"]["Unit Name"]
         cls._name_ip_map.update({name: ip})
-        cls._device_register.update({ip: ESP(ip, dummy)})
+        esp = ESP(ip, dummy)
+        cls._device_register.update({ip: esp})
+        lock.release()
 
     @ classmethod
-    def scan_network(cls, network: ipaddress.IPv4Network = None, timeout=1):
+    def scan_network(cls, network: ipaddress.IPv4Network = None, timeout=3):
         """Scans the network for any ESPEasy device and creates ESP instances
 
         The method scans all hosts in the given ipaddress.IPv4Network.

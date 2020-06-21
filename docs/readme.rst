@@ -14,6 +14,14 @@ ESPEasy
 
 You can run the `ESPEasy Firmware <https://github.com/letscontrolit/ESPEasy>`_ firmware on ESP8266 devices, for example the NodeMCU.
 
+********************
+Configuration files
+********************
+espisy uses config files (.ini files) within the package. Other configurations, like esp specific settings, a subnet for 
+scanning etc. are stored in .yaml files for easier access. You can find all .yaml finds in one directory. Standard, is ``/.espisy`` in your 
+home directory, but you can change it in the .ini file. Espisy comes with a script ``espisy_setup.py`` that will lead you through the first steps and (hopefully)
+leave you with working settings.
+
 ******
 Usage
 ******

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="espisy",
-    version="0.2.0b",
+    version="0.2.1rc1",
     author="ElZetto",
     author_email="scooby-online@gmx.de",
     description="A tool to access and control ESPEasy devices",
@@ -19,6 +19,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    install_requires=['requests','pyyaml'],
-    python_requires='>=3.8',
+    scripts=['scripts/espisy_setup.py'],
+    install_requires=['requests','pyyaml','colorama'],
+    python_requires='>=3.5',
 )
