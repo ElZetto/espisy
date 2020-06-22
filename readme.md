@@ -3,6 +3,9 @@
 
 Simple client to access and controll ESPs that run ESPEasy in your local network
 
+:warning:
+    **Please notice that the project is in very early stage. It WILL experience lots of changes. Some of them will be breaking backwards compatibility!**
+
 ********
 ## ESPEasy
 
