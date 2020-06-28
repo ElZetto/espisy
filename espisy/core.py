@@ -11,7 +11,7 @@ from typing import Union
 import requests
 import yaml
 
-from .sensor import Sensor
+from .devices import Device
 from .errors import ESPNotFoundError, NoGPIOError
 from .constants import test_ip, test_name, test_state, test_gpio, config
 
@@ -27,7 +27,7 @@ logger.setLevel(logging.DEBUG)
 # Extract the filename for settings from the config. Set to Home directory on default
 settings_dir = config.get("USER_SETTINGS", "file_dir")
 if settings_dir == "default":
-    settings_dir = os.path.join(Path.home(),".espisy")
+    settings_dir = os.path.join(Path.home(), ".espisy")
 settings_file_name = os.path.join(settings_dir, "esp.yaml")
 
 
@@ -37,43 +37,24 @@ class ESP():
     _device_register = {}
     _name_ip_map = {}
 
-    def __init__(self, ip: str, dummy=False):
+    def __init__(self, ip: str):
         """Initializing the ESP
 
         Parameters
         ----------
         ip : str
             The local ip where the ESP is reachable.
-        dummy : bool, optional
-            If set to True, a dummy ESP will be set up. Used for testing, by default False
         """
 
-        if dummy == True:
-            self.__set_up_dummy()
-        else:
-            self.ip = ip
-            self._is_dummy = False
-            self._state = None
-            self._switches = {}
-            self.refresh()
-            self._initialize_switches()
-            self.name = self._state["System"]["Unit Name"]
-
-    def __set_up_dummy(self):
-        """Sets all properties to dummy values. Used with testing"""
-        self.ip = test_ip
-        self.name = test_name
-        self._is_dummy = True
-        self._switches = {}
-        self._state = test_state
-        self._initialize_switches()
+        self.ip = ip
+        self._state = None
+        self.devices = []
+        self.refresh()
+        self.name = self._state["System"]["Unit Name"]
 
     def refresh(self):
         """Refreshes the state of the esp by requesting http://<self.ip>/json."""
 
-        if self._is_dummy:
-            logger.debug("Instance is a dummy. Test_state will be returned")
-            return 0
         self._state = requests.get(f"http://{self.ip}/json").json()
 
     @property
@@ -90,27 +71,17 @@ class ESP():
         return self._state
 
     @property
-    def sensors(self) -> list:
-        """Returns a list of all sensors read from self._state.
-
-        Returns
-        -------
-        list
-            List of all sensors read at the last refresh.
-        """
-        sensors = [sensor["TaskName"]for sensor in self._state["Sensors"]]
-        return sensors
+    def devices(self):
+        """Returns all devices of an ESP"""
+        return self.devices
 
     @state.setter
     def state(self, value):
-        """The state of an ESP can only be set if it is a dummy. Otherwise a refresh is triggered"""
+        """A refresh is triggered"""
         logger.error("Setting not permitted. Refresh triggered")
-        if self._is_dummy:
-            self._state = value
-        else:
-            self.refresh()
+        self.refresh()
 
-    def gpio_on(self, gpio) -> dict:
+    def gpio_on(self, gpio: int) -> dict:
         """Turn a GPIO on. This is a very basic function. If you want to access an ESPEasy switch use on, off or toggle instead.
 
         Parameters
@@ -121,18 +92,22 @@ class ESP():
         Returns
         -------
         dict
-            Answer of the ESP as json. Returns the cmd_url if instance is a dummy
+            Answer of the ESP as json.
         """
 
         if gpio == None:
             raise NoGPIOError
         cmd_url = f"http://{self.ip}/control?cmd=GPIO,{gpio},1"
-        if self._is_dummy:
-            return cmd_url
-        answer = requests.get(cmd_url).json()
-        return answer
+        answer = requests.get(cmd_url)
+        try:
+            answer = answer.json()
+            return answer["state"]
+        except json.decoder.JSONDecodeError as e:
+            print(f"An error occured. Could not verify json data: {e}")
+            answer = answer.text
+            return answer
 
-    def gpio_off(self, gpio) -> dict:
+    def gpio_off(self, gpio: int) -> dict:
         """Turn a GPIO off. This is a very basic function. If you want to access an ESPEasy switch use on, off or toggle instead.
 
         Parameters
@@ -143,120 +118,56 @@ class ESP():
         Returns
         -------
         str
-            Answer of the ESP as json. Returns the cmd_url if instance is a dummy
+            Answer of the ESP as json.
         """
 
         if gpio == None:
             raise NoGPIOError
         cmd_url = f"http://{self.ip}/control?cmd=GPIO,{gpio},0"
-        if self._is_dummy:
-            return cmd_url
-        answer = requests.get(cmd_url).json()
-        return answer
+        answer = requests.get(cmd_url)
+        try:
+            answer = answer.json()
+            return answer["state"]
+        except json.decoder.JSONDecodeError as e:
+            print(f"An error occured. Could not verify json data: {e}")
+            answer = answer.text
+            return answer
 
-    def _initialize_switches(self) -> dict:
-        """The function initializes all switches.
+    def gpio_state(self, gpio: int) -> dict:
+        """Returns the state of the given GPIO
 
-        It looks for all Sensors in the ESP state that have "switch" in Type and
-        appends them to self._switches. Needed for the easier access via on(switchname) off(switchname) and toggle(switchname)
-
-        Returns
-        -------
-        dict
-            The only time self._switches is returned
-        """
-
-        for sensor in self.state["Sensors"]:
-            if "switch" in sensor["Type"].lower():
-                self._switches.update(
-                    {sensor["TaskName"]: {"GPIO": None}})
-        return self._switches
-
-    def delete_switch(self, name) -> dict:
-        """Simple wrapper to pop the switch with <name> from the _switches dictionary.
+        Normally returns dict. At the moment (V0.3.0) the JSON answer from ESPEasy is broken. Will return str instead
 
         Parameters
         ----------
-        name : str
-            name of the switch to pop
-
-        Returns
-        -------
-        dict
-            returns the values of the popped item
-        """
-
-        switch = self._switches.pop(name)
-        return switch
-
-    def map_gpio_to_switch(self, switch, gpio):
-        """This function needs to be called in order to map a GPIO to the switch.
-
-        Since it is not possible to find out the GPIO pin of a task via ESPEasy, you need to
-        map the GPIO pin to the switch on your own, if you want to manipulate it.
-        Reading the switch state is possible without mapping a GPIO to it.
-
-        Parameters
-        ----------
-        switch : str
-            name of the switch that the GPIO should be mapped to (The name that you gave it in ESPEasy)
         gpio : int
-            GPIO that should be mapped to it (was also set in ESPEasy)
-        """
-
-        self._switches[switch]["GPIO"] = gpio
-
-    def on(self, switch) -> dict:
-        """Turns a specific switch on
-
-        Parameters
-        ----------
-        switch : str
-            Name of the switch
+            GPIO number
 
         Returns
         -------
         dict
-            JSON answer from ESP
+            JSON answer from ESPEasy
 
         Raises
         ------
         NoGPIOError
-            If no GPIO was mapped to the switch
+            If no GPIO is given
         """
 
-        gpio = self._switches[switch]["GPIO"]
         if gpio == None:
-            raise NoGPIOError(f"No GPIO mapped to the switch {switch}")
-        answer = self.gpio_on(gpio)
-        return answer
+            raise NoGPIOError
+        cmd_url = f"http://{self.ip}/control?cmd=status,gpio,{gpio}"
+        answer = requests.get(cmd_url)
+        try:
+            answer = answer.json()
+            return answer["state"]
+        except json.decoder.JSONDecodeError as e:
+            print(f"An error occured. Could not verify json data: {e}")
+            answer = answer.text
+            start = answer.find('"state": ')+9
+            return answer[start:start+1]
 
-    def off(self, switch) -> dict:
-        """Turns a specific switch off
-
-        Parameters
-        ----------
-        switch : str
-            Name of the switch
-
-        Returns
-        -------
-        dict
-            JSON answer from ESP
-
-        Raises
-        ------
-        NoGPIOError
-            If no GPIO was mapped to the switch
-        """
-
-        gpio = self._switches[switch]["GPIO"]
-        if gpio == None:
-            raise NoGPIOError(f"No GPIO mapped to the switch {switch}")
-        answer = self.gpio_off(gpio)
-        return answer
-
-    def toggle(self, switch: Union[str, int]) -> dict:
+    def _toggle(self, gpio: int) -> dict:
         """Toggles a switch or GPIO
 
         You can pass the name of the switch or the number of the GPIO
@@ -269,97 +180,55 @@ class ESP():
         Returns
         -------
         dict
-            JSON answer from ESPEasy
+            JSON answer from ESPEasy. (If JSON answer from ESPEasy is broken, returns string)
 
         Raises
         ------
         NoGPIOError
             If no GPIO was mapped to the switch
         """
-        if switch in self._switches:
-            gpio = self._switches.get(switch, None)["GPIO"]
-        elif isinstance(switch, int):
-            gpio = switch
+
         if gpio == None:
             raise NoGPIOError(f"No GPIO mapped to the switch {switch}")
         else:
             cmd_url = f"http://{self.ip}/control?cmd=gpiotoggle,{gpio}"
-            answer = requests.get(cmd_url).json()
-            return answer
+            answer = requests.get(cmd_url)
+            try:
+                answer = answer.json()
+                return answer
+            except json.JSONDecoder.JSONDecodeError as e:
+                logger.info(f"Could not encode answer to json. ({e})")
+                answer = answer.text
+                return answer
 
-    def switch_state(self, switch) -> dict:
-        """Sends a get request to the esp and returns the status of the switch.
+    def device(self, device_name: str, **kwargs) -> Device:
+        """Create a device
 
-        Parameters
-        ----------
-        switch : str
-            name of the switch
-
-        Returns
-        -------
-        dict
-            the json answer from ESPEasy
-
-        Raises
-        ------
-        NoGPIOError
-            Raised if no GPIO is mapped to the switch
-        """
-
-        gpio = self._switches[switch]['GPIO']
-        if gpio == None:
-            raise NoGPIOError
-        if self._is_dummy:
-            return f"http://{self.ip}/control?cmd=status,gpio,{gpio}"
-        answer = requests.get(
-            f"http://{self.ip}/control?cmd=status,gpio,{gpio}").json()
-        return answer
-
-    def sensor_state(self, sensor_name, refresh=True) -> dict:
-        """Returns a sensor state from self._state
-
-        In standard behaviour the function refreshes self._state before the sensor state is returned
+        Fire and forget. The esp keeps track of the device. You can always access it with its name afterwards.
+        The first call of device("led") will create a device with name led. The second call will return this device again.
+        This means that you cannot create two devices with the same name. (Not recommended in ESPEasy as well)
 
         Parameters
         ----------
-        sensor_name : str
-            name of the sensor to be looked up
-        refresh : bool, optional
-            defines if a refresh should be done first, by default True
+        device_name : str
+            Name of the device
+        **kwargs : dict, str
+            You can (and sometimes need to) pass further arguments
+            like device_type="<type>" or settings={"<name>":<value>}
 
         Returns
         -------
-        dict
-            the sensor dictionary
+        Device
+            Returns the device that was created
         """
 
-        if refresh == True:
-            self.refresh()
-        for sensor in self._state["Sensors"]:
-            if sensor["TaskName"] == sensor_name:
-                return sensor["TaskValues"]
-
-    def sensor(self, sensor_name, refresh=False) -> Sensor:
-        """Returns a sensor object of the given sensor name.
-
-        Calls sensor_state with refresh=False internally.
-        In standard behaviour, the function DOES NOT refresh self._state
-
-        Parameters
-        ----------
-        sensor_name : str
-            name of the sensor to look for
-        refresh : bool, optional
-            defines if a refresh should be done first, by default False
-
-        Returns
-        -------
-        Sensor
-            Returns an object of class Sensor (see sensor.py)
-        """
-
-        sens = Sensor(sensor_name, self.sensor_state(sensor_name, refresh))
-        return sens
+        for device in self.devices:
+            if device_name == device["name"]:
+                return device["instance"]
+        device = Device(name=device_name, parent=self, **kwargs)
+        self.devices.append({"name": device_name, "device_class": device.device_class,
+                             "settings": device.settings, "instance": device})
+        return device
 
     def save_settings(self):
         """Save the settings to the esp.yaml configuration file
@@ -368,6 +237,7 @@ class ESP():
         The standard behaviour for all save files is  ~home/.espisy/
         This method overwrites the old settings.
         """
+
         filename = os.path.join(config.get(
             "USER_SETTINGS", "file_dir"), "esp.yaml")
         with open(filename, "r") as save_file:
@@ -378,10 +248,12 @@ class ESP():
         saved_esp_setting = next(((i, dictionary) for i, dictionary in enumerate(
             settings["esps"]) if self.ip in dictionary), None)
         if saved_esp_setting == None:
-            settings["esps"].append({self.ip: {"switches": self._switches}})
+
+            settings["esps"].append({self.ip: {"devices": [{key: value for key, value in device.items(
+            ) if key != "instance"} for device in self.devices]}})
         else:
             settings["esps"][saved_esp_setting[0]].update(
-                {self.ip: {"switches": self._switches}})
+                {self.ip: {"devices": [{key: value for key, value in device.items() if key != "instance"} for device in self.devices]}})
         with open(filename, "w") as save_file:
             yaml.dump(settings, save_file)
 
@@ -398,9 +270,55 @@ class ESP():
         str
             HTML response
         """
+
         cmd_url = f"http://{self.ip}/control?cmd=event,{event}"
         answer = requests.get(cmd_url)
         return answer
+
+    def send_command(self, cmd: str) -> str:
+        """Send a command to the ESPEasy device
+
+        Any command that is not covered within the ESP class can be send via this function.
+        It provides the address of the ESP.
+
+        Parameters
+        ----------
+        cmd : str
+            The command string that comes behind http://ip/
+
+        Returns
+        -------
+        str
+            Returns the answer of the ESPEasy device
+        """
+
+        cmd_url = f"http://{self.ip}/{cmd}"
+        answer = requests.get(cmd_url)
+        try:
+            answer = answer.json()
+            return answer
+        except json.JSONDecoder.JSONDecodeError as e:
+            logger.info(f"Could not encode answer to json. ({e})")
+            answer = answer.text
+            return answer
+
+    def load_settings(self):
+        """Try to load settings from esp.yaml
+
+        If you created devices, they will be automatically generated with this method.
+        This method is automatically invoked by the scan_network method
+        """
+
+        filename = os.path.join(config.get(
+            "USER_SETTINGS", "file_dir"), "esp.yaml")
+        with open(filename, "r") as save_file:
+            settings = yaml.safe_load(save_file)
+        for esp in settings["esps"]:
+            for ip, details in esp.items():
+                if ip == self.ip:
+                    for device in details["devices"]:
+                        self.device(
+                            device["name"], device_type=device["device_class"], settings=device["settings"])
 
     @ classmethod
     def get(cls, ip):
@@ -449,7 +367,7 @@ class ESP():
         return esp_deleted
 
     @ classmethod
-    def add(cls, ip, dummy=False):
+    def add(cls, ip):
         """Classmethod. Should always be used.
 
         Especially necessary if the function of the device register is used.
@@ -458,8 +376,6 @@ class ESP():
         ----------
         ip : str
             ip address of the ESP device
-        dummy : bool, optional
-            If set to True, a dummy ESP will be set up. Used for testing, by default False
         """
 
         lock = threading.Lock()
@@ -467,7 +383,7 @@ class ESP():
         name = requests.get(
             f"http://{ip}/json").json()["System"]["Unit Name"]
         cls._name_ip_map.update({name: ip})
-        esp = ESP(ip, dummy)
+        esp = ESP(ip)
         cls._device_register.update({ip: esp})
         lock.release()
 
@@ -538,18 +454,10 @@ class ESP():
                     # Try to find old settings and apply
                     esp = ESP.get(host.exploded)
                     # Check if the settings have already been saved and update or append the current settings
-                    saved_esp_setting = next(
-                        (d for d in settings["esps"] if esp.ip in d), None)
-                    if saved_esp_setting == None:
-                        return
-                    else:
-                        for switch in esp._switches:
-                            try:
-                                esp.map_gpio_to_switch(switch, saved_esp_setting[host.exploded].get(
-                                    "switches").get(switch, None).get("GPIO", None))
-                            except AttributeError:
-                                logger.info(
-                                    f"Did not find any information for {switch} at {esp.ip} in the config file")
+                    try:
+                        esp.load_settings()
+                    except Exception as e:
+                        logger.exception(f"An Exception occured: {e}")
 
         except (json.JSONDecodeError, requests.ConnectTimeout, KeyError, requests.ConnectionError) as error:
             pass  # logger.debug(f"did not find a device at {host}")

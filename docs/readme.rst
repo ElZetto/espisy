@@ -66,106 +66,102 @@ configure the network (ipv4 with suffix) in the esp.yaml file or pass it as argu
 
     ESP.get("living room")
 
+
+Devices
+========
+
+.. versionadded:: 0.3.0
+
+Espisy comes with a hand full of devices that are currently supported by ESPEasy. Every device inherits the :class:`~espisy.devices.Device`
+base class, which implements the most basic properties, like the name, a parent and the current state.
+
+Supported devices - except for :ref:`gpio` - can be instantiated by calling the Device constructor with the 
+device name from ESPEasy (fifth column in the picture below) and a parent esp device.
+
+.. image:: _static/ESPEasy_device.png
+
+Currently supported devices and the corresponding device class are:
+
+- "Environment - DHT11/12/22  SONOFF2301/7021": :class:`~espisy.devices.DHT`
+- "Environment - DHT12 (I2C)": :class:`~espisy.devices.DHT`
+- "Switch input - Switch": :class:`~espisy.devices.Switch`
+- "Display - LCD2004": :class:`~espisy.devices.Display`
+- "Display - OLED SSD1306": :class:`~espisy.devices.Display` (not tested)
+- "Display - OLED SSD1306/SH1106 Framed": :class:`~espisy.devices.Display` (not tested)
+- "GPIO": :class:`~espisy.devices.GPIO`
+- "Switch Input - Rotary Encoder": :class:`~espisy.devices.Rotary`
+- "Generic - MQTT Import": :class:`~espisy.devices.MQTT`
+
+.. note::
+
+    You should use the :meth:`~espisy.core.ESP.device` method of :class:`~espisy.core.ESP` objects.
+    It keeps track of the devices and you do not need to store your devices in dozens of variables or lists.
+    
+If you call the method with the name you set in ESPEasy, the class automatically detects the real device type and 
+creates a device. The name **does not** have any impact on the class detection. 
+You can create a DHT device that is called "LED". If it has the name "LED" in ESPEasy and is set up as a DHT, you 
+will be able to read the temperature and humidity from your "LED" device.
+
+Although devices have a :meth:`~espisy.devices.Device.refresh` method, it always refreshes **all** devices, because it fires 
+the refresh method of its parent. This is intended behaviour, because it keeps the number of requests low.
+
+.. code-block:: python
+
+    ESP.add("192.0.0.69")
+    esp = ESP.get("192.0.0.69")
+
+    esp.device("DHT") # Will create a device called DHT
+    esp.device("door switch") # Will create a device called door switch
+    # You regain control of the device when you call the function again
+    esp.device.("DHT").temperature # Will return the temperature value
+    # Do other stuff
+    # ...
+    # Refresh all devices
+    esp.refresh()
+    # does the same as esp.device("DHT").refresh()
+
 .. _gpio:
 
 GPIO
-=======
-.. note::
-    It is recommended to use :ref:`switches`.
-    The usage will be easier and more comfortable
+=====
 
-You can manipulate the ESP GPIOS directly via HTTP request.
+.. versionadded:: 0.3.0
 
-.. code-block:: html
-
-    http://<ip>/control?cmd=GPIO,<gpio>,<state>
-
-espisy wraps this with the functions :meth:`~espisy.core.ESP.gpio_on` and :meth:`~espisy.core.ESP.gpio_off`.
+GPIOs are special devices, because they need a GPIO number to work at all. You need to pass the number within the settings argument.
+The general call is:
 
 .. code-block:: python
 
-    # Example to switch GPIO 2 of your ESP with IP 192.0.0.255 on:
-    ESP.get("192.0.0.255").gpio_off(2)
+    gpio = Device(<name>, <parent>, device_type="GPIO", settings={"pin":<gpio>})
 
-.. _switches:
-
-Switches
-=========
-If you have defined a switch in ESPEasy, it is easier to manipulate the :ref:`GPIO`, once it is mapped.
-Since it is not possible to receive the GPIO of a switch via HTTP requests (at least not without 
-manually parsing the HTML response), you need to map the GPIO initially to the switch.
-
-Let's say you have set up a switch named "LED" on GPIO 2 at 127.0.0.1 in ESPEasy. During initialization, 
-all ESPEasy tasks will be searched. Tasks with the keyword "switch" will be handled extra and allow a few extra methods.
-
-In order to use the switches, you have to map the right GPIO once
+Say you want to access GPIO 2 of an ESPEasy device at 192.0.0.69 to control a LED:
 
 .. code-block:: python
 
-    ESP.get("192.0.0.255").map_gpio_to_switch("LED",2)
-
-Now you can use the commands :meth:`~espisy.core.ESP.switch_state`, :meth:`~espisy.core.ESP.on()`, 
-:meth:`~espisy.core.ESP.off()` and :meth:`~espisy.core.ESP.toggle()`
-
-.. code-block:: python
-
-    esp = ESP.get("192.0.0.255")
-    esp.on("LED")   # Will set the GPIO HIGH
-    esp.off("LED")  # Will set the GPIO LOW
-    esp.toggle("LED")   # Will toggle the GPIO
-    esp.switch_state("LED") # Will return the following dictionary and always be up to date
-    {
-        "log": "",
-        "plugin": 1,
-        "pin": 2,
-        "mode": "output",
-        "state": 1
-    }
-
-.. _sensors:
-
-Sensors
-========
-You can access every Sensor from your ESPEasy Device by calling sensor_state(\<name_of_sensor>).
-Say you have a Sensor *"Environment - DHT11/12/22 SONOFF2301/7021"* named *"Living Room"* set up.
-
-.. code-block:: python
-
-    ESP.get(<ip_of_ESP>).sensor_state("Living Room")
-    # will return something like
-    [
-        {
-            'ValueNumber': 1,
-            'Name': 'Temperature',
-            'NrDecimals': 2,
-            'Value': 21.3
-        },
-        {
-            'ValueNumber': 2,
-            'Name': 'Humidity',
-            'NrDecimals': 2,
-            'Value': 77.4
-        }
-    ]
-
-Alternatively, you can also access the sensor as a :doc:`subclass <sensor>`, which provides the properties
-:attr:`~espisy.sensor.Sensor.temperature`, :attr:`~espisy.sensor.Sensor.humidity` and the method :meth:`~~espisy.sensor.Sensor.feature`.
-
-.. code-block:: python
-
-    esp = ESP.get(<ip_of_ESP>)
-    dht = esp.sensor("DHT")
-    print(dht.temperature)
-    # will output 21.3 or whatever the current data is
+    ESP.add("192.0.0.69")
+    esp = ESP.get("192.0.0.69")
+    gpio = Device("led", esp, device_type="GPIO", settings={"pin":2})
+    # Now you can access the GPIO functions
+    gpio.on()
+    gpio.off()
+    gpio.toggle()
 
 .. _testing:
 
 Testing
 ========
+
+.. note::
+    You only need this if you want to develop in espisy. Normal user do not need this section.
+
+    
+.. versionchanged:: 0.3.0 removed dummy tests
+
+
 .. warning::
     The test toggles GPIO 2 high and low a few times. Only wire the GPIO up to LED or something if you know what you are doing.
 
-The testing module that comes with espisy can be executed with a dummy (which is only useful for development) or with a real ESP. If you want to test automatically with a real ESP, please set up an ESPEasy device like this:
+The testing module that comes with espisy can be executed with a real ESP. If you want to test automatically with a real ESP, please set up an ESPEasy device like this:
 
 +----------------------------+--------+------+
 | Device                     | Name   | GPIO |
@@ -178,13 +174,8 @@ The testing module that comes with espisy can be executed with a dummy (which is
 | DHT11/12/22SONOFF2301/7021 |        |      |
 +----------------------------+--------+------+
 
-Start the test either with `--dummmy` or with `--ip xxx.xxx.xxx`
+Start the test with `--ip xxx.xxx.xxx`
 
 .. code-block:: python
 
-    python test_esp --dummy
-    # or with an example ip:
     python test_esp --ip 192.0.0.255
-
-
-It will try to create and delete the ESP, switches and toggle
