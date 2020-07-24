@@ -13,7 +13,7 @@ import yaml
 
 from .devices import Device
 from .errors import ESPNotFoundError, NoGPIOError
-from .constants import test_ip, test_name, test_state, test_gpio, config
+from .constants import config
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class ESP():
 
         self.ip = ip
         self._state = None
-        self.devices = []
+        self._devices = []
         self.refresh()
         self.name = self._state["System"]["Unit Name"]
 
@@ -70,16 +70,20 @@ class ESP():
         """
         return self._state
 
-    @property
-    def devices(self):
-        """Returns all devices of an ESP"""
-        return self.devices
-
     @state.setter
     def state(self, value):
         """A refresh is triggered"""
         logger.error("Setting not permitted. Refresh triggered")
         self.refresh()
+
+    @property
+    def devices(self):
+        """Returns all devices of an ESP"""
+        return self._devices
+
+    @devices.setter
+    def devices(self, devices):
+        self._devices = devices
 
     def gpio_on(self, gpio: int) -> dict:
         """Turn a GPIO on. This is a very basic function. If you want to access an ESPEasy switch use on, off or toggle instead.
@@ -313,12 +317,15 @@ class ESP():
             "USER_SETTINGS", "file_dir"), "esp.yaml")
         with open(filename, "r") as save_file:
             settings = yaml.safe_load(save_file)
-        for esp in settings["esps"]:
-            for ip, details in esp.items():
-                if ip == self.ip:
-                    for device in details["devices"]:
-                        self.device(
-                            device["name"], device_type=device["device_class"], settings=device["settings"])
+        try:
+            for esp in settings["esps"]:
+                for ip, details in esp.items():
+                    if ip == self.ip:
+                        for device in details["devices"]:
+                            self.device(
+                                device["name"], device_type=device["device_class"], settings=device["settings"])
+        except KeyError as e:
+            logger.info(f"Could not find settings for ESP devices.")
 
     @ classmethod
     def get(cls, ip):

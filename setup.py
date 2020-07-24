@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="espisy",
-    version="0.2.1rc1",
+    version="0.3.1",
     author="ElZetto",
     author_email="scooby-online@gmx.de",
     description="A tool to access and control ESPEasy devices",
