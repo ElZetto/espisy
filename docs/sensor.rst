@@ -2,6 +2,5 @@
 Sensor Module
 ##############
 
-
-.. automodule:: espisy.sensor
-   :members:
+.. deprecated:: 0.3.0
+    Use the :mod:`espisy.devices` module instead

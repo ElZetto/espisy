@@ -10,10 +10,10 @@ For users:
    :maxdepth: 2
 
    esp
-   sensor
-   test
+   devices
    readme
-
+   sensor
+   
 ****************
 For developers:
 ****************
